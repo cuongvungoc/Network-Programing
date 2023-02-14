@@ -5,18 +5,48 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <stdlib.h>
+
 #define PORT 8080
 #define SIZE 1024
+
+// 1 - list all file on server
+// 2 - download a file on server
+
+void recv_list(int new_socket)
+{
+    int valread;
+    // int count = 0;
+    char received[1024] = "Received!";
+    printf("In receive list function\n");
+    while (1)
+    {
+        // char msg[100];
+        // printf("Read %d\n", count++);
+        char buffer[1024] = {0};
+        valread = read(new_socket, buffer, 1024);
+        if (valread > 0)
+        {
+            send(new_socket, received, sizeof(received), 0);
+        }
+
+        if (buffer[0] == 'q')
+        {
+            break;
+        }
+        printf("%s\n", buffer);
+        // bzero(buffer, SIZE);
+    }
+}
 
 void wirte_file(int sockfd)
 {
     int n;
     FILE *fp;
-    // char *filename = "recv.txt";
-    char *filename = "recv.png";
+    char *filename = "recv.txt";
     char buffer[SIZE];
+    fp = fopen(filename, "w");
 
-    fp = fopen(filename, "wb");
     while (1)
     {
         n = recv(sockfd, buffer, SIZE, 0);
@@ -25,10 +55,11 @@ void wirte_file(int sockfd)
             break;
             return;
         }
-        // fprintf(fp, "%s", buffer);
-        fwrite(buffer, SIZE, 1, fp);
+        fprintf(fp, "%s", buffer);
+        // fwrite(buffer, SIZE, 1, fp);
         bzero(buffer, SIZE);
     }
+    printf("Data written in the file successfully.\n");
     return;
 }
 
@@ -60,26 +91,38 @@ int main(int argc, char const *argv[])
     }
     printf("Connected to Server.\n");
 
-    wirte_file(sockfd);
-    printf("Data written in the file successfully.\n");
-    
-    /* Read message from Server*/
-    // while (1)
-    // {
-    //     char msg[100];
-    //     char buffer[1024] = {0};
-    //     send(sock, hello, strlen(hello), 0);
-    //     // printf("Message sent from client\n");
-    //     valread = read(sock, buffer, 1024);
-    //     if (buffer[0] == 'q')
-    //     {
-    //         break;
-    //     }
-    //     printf("%s", buffer);
-    //     fgets(msg, 100, stdin);
-    //     send(sock, msg, strlen(msg), 0);
-    //     // free(buffer);
-    // }
+    char select[SIZE];
+    while (1)
+    {
+        printf("-----------------------------\n");
+        printf("1. List all file on server\n");
+        printf("2. Download a file on server\n");
+        printf("-----------------------------\n");
+        printf("Enter your selection: ");
+        // scanf("%c", &select);
+        fgets(select, SIZE, stdin);
+        // send(sockfd, select, sizeof(select), 0);
+        if (select[0] == 'q')
+        {
+            send(sockfd, select, sizeof(select), 0);
+
+            close(sockfd);
+            return 0;
+        }
+        else if (select[0] == '1')
+        {
+            send(sockfd, select, sizeof(select), 0);
+
+            recv_list(sockfd);
+        }
+        else if (select[0] == '2')
+        {
+            send(sockfd, select, sizeof(select), 0);
+
+            wirte_file(sockfd);
+            // break;
+        }
+    }
 
     // closing the connected socket
     close(sockfd);
