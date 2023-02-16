@@ -9,20 +9,17 @@
 
 #define PORT 8080
 #define SIZE 1024
-
-// 1 - list all file on server
-// 2 - download a file on server
+#define LIST_FILES '1'
+#define DOWNLOAD '2'
+#define QUIT 'q'
 
 void recv_list(int new_socket)
 {
     int valread;
-    // int count = 0;
     char received[1024] = "Received!";
     printf("In receive list function\n");
     while (1)
     {
-        // char msg[100];
-        // printf("Read %d\n", count++);
         char buffer[1024] = {0};
         valread = read(new_socket, buffer, 1024);
         if (valread > 0)
@@ -35,17 +32,13 @@ void recv_list(int new_socket)
             break;
         }
         printf("%s\n", buffer);
-        // bzero(buffer, SIZE);
     }
 }
 
-void wirte_file(int sockfd)
+void wirte_file(FILE *fp, int sockfd)
 {
     int n;
-    FILE *fp;
-    char *filename = "recv.txt";
     char buffer[SIZE];
-    fp = fopen(filename, "w");
 
     while (1)
     {
@@ -92,39 +85,48 @@ int main(int argc, char const *argv[])
     printf("Connected to Server.\n");
 
     char select[SIZE];
+    FILE *fp;
+
     while (1)
     {
         printf("-----------------------------\n");
         printf("1. List all file on server\n");
         printf("2. Download a file on server\n");
+        printf("q. Quit the program\n");
         printf("-----------------------------\n");
         printf("Enter your selection: ");
-        // scanf("%c", &select);
-        fgets(select, SIZE, stdin);
-        // send(sockfd, select, sizeof(select), 0);
-        if (select[0] == 'q')
+        scanf("%s", select);
+
+        if (select[0] == QUIT)
         {
             send(sockfd, select, sizeof(select), 0);
 
             close(sockfd);
             return 0;
         }
-        else if (select[0] == '1')
+        else if (select[0] == LIST_FILES)
         {
             send(sockfd, select, sizeof(select), 0);
 
             recv_list(sockfd);
         }
-        else if (select[0] == '2')
+        else if (select[0] == DOWNLOAD)
         {
+            char dir[SIZE] = "./recv_file/";
+            char file_name[SIZE];
             send(sockfd, select, sizeof(select), 0);
-
-            wirte_file(sockfd);
+            printf("Enter file name to download: ");
+            scanf("%s", file_name);
+            send(sockfd, file_name, sizeof(select), 0);
+            strcat(dir, file_name);
+            fp = fopen(dir, "w");
+            wirte_file(fp, sockfd);
             // break;
         }
     }
 
     // closing the connected socket
+    free(fp);
     close(sockfd);
     return 0;
 }

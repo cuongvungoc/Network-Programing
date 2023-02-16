@@ -3,11 +3,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define TIMEOUT 10      /* Timeout cho select() là 5s */
+#define TIMEOUT 10 /* Timeout for select()*/
 
-#define BUF_LEN 1024    /* buffer length */
+#define BUF_LEN 1024 /* buffer length */
 
-int main (void)
+int main(void)
 {
 	struct timeval tv;
 	fd_set readfds;
@@ -25,27 +25,27 @@ int main (void)
 	/*Block stdin đến khi stdin sẵn sàng đọc*/
 
 	/*Tập hợp mô tả file writefds và exceptfds truyền vào NULL*/
-	ret = select (STDIN_FILENO + 1, &readfds, NULL, NULL, &tv);
+	ret = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &tv);
 
 	if (-1 == ret)
 	{
-		perror("Select error.\n" );
+		perror("Select error.\n");
 		return 1;
 	}
 	else if (0 == ret)
 	{
-		printf("Timeout after %d seconds.\n" , TIMEOUT);
+		printf("Timeout after %d seconds.\n", TIMEOUT);
 		return 0;
 	}
 
-	/* 
+	/*
 	Kiểm tra xem stdin có nằm trong readfds không
 	Nếu FD_ISSET trả về 1, stdin nằm trong readfds và stdin sẵn sàng đọc
 	*/
 
 	if (FD_ISSET(STDIN_FILENO, &readfds))
 	{
-		char buf[BUF_LEN+1];
+		char buf[BUF_LEN + 1];
 		int len = -1;
 
 		/* Đọc dữ liệu từ mô tả file của stdin */
@@ -54,14 +54,14 @@ int main (void)
 
 		if (-1 == len)
 		{
-			perror("Read fd error.\n" );
+			perror("Read fd error.\n");
 			return 1;
 		}
 
-		if(len)
+		if (len)
 		{
-			buf[len] = '\0' ; /*manual vì read() không thêm ký tự null vào cuối string*/
-			printf ("read: %s\n" , buf);
+			buf[len] = '\0'; /*manual vì read() không thêm ký tự null vào cuối string*/
+			printf("read: %s\n", buf);
 		}
 		return 0;
 	}

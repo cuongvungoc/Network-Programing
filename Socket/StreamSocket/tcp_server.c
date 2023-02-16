@@ -20,10 +20,9 @@ void send_file(FILE *fp, int sockfd)
 {
     printf("Send file called!\n");
     char data[SIZE] = {0};
-    int file_size = 0;
+
     while (fgets(data, SIZE, fp) != NULL)
     {
-        file_size += sizeof(data);
         if (send(sockfd, data, sizeof(data), 0) == -1)
         {
             perror("Error in sending file");
@@ -31,7 +30,11 @@ void send_file(FILE *fp, int sockfd)
         }
         bzero(data, SIZE);
     }
-    printf("Number of bytes sent: %d bytes\n", file_size);
+    fseek(fp, 0L, SEEK_END); // seek to the EOF
+    int size = ftell(fp);
+    rewind(fp);
+
+    printf("Number of bytes sent: %d bytes\n", size);
     printf("File data sent successfully.\n");
 }
 
@@ -41,22 +44,19 @@ void list_file(int sockfd, int new_socket)
     DIR *d;
     d = opendir(".");
     char quit[100] = "q";
-    printf("In list file function\n");
     if (d)
     {
         while ((dir = readdir(d)) != NULL)
         {
-            int valread;
             char buffer[SIZE] = {0};
             send(new_socket, dir->d_name, strlen(dir->d_name), 0);
-            valread = read(new_socket, buffer, SIZE);
+            read(new_socket, buffer, SIZE);
         }
     }
     send(new_socket, quit, strlen(quit), 0);
 
     free(dir);
     free(d);
-    printf("End list function!\n");
 }
 
 void handle_client(FILE *fp, int server_fd, char request, int new_socket)
@@ -87,12 +87,8 @@ int main(int argc, char const *argv[])
     struct sockaddr_in address;
     int opt = 1;
     int addrlen = sizeof(address);
-    int valread;
 
     FILE *fp;
-    char *filename = "send.txt";
-    // char *filename = "picture.png";
-    // char buffer[1024] = {0};
 
     // Creating socket file descriptor
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -148,17 +144,10 @@ int main(int argc, char const *argv[])
     inet_ntop(AF_INET, &ipAddr, str, INET_ADDRSTRLEN);
     printf("Listening from client with IP: %s, PORT: %d\n", str, ntohs(pV4Addr->sin_port));
 
-    fp = fopen(filename, "r");
-    if (fp == NULL)
-    {
-        perror("Error in reading file.\n");
-        exit(EXIT_FAILURE);
-    }
-
     while (1)
     {
         char buffer[SIZE] = {0};
-        valread = read(new_socket, buffer, SIZE);
+        read(new_socket, buffer, SIZE);
         if (buffer[0] == QUIT)
         {
             close(server_fd);
@@ -167,13 +156,21 @@ int main(int argc, char const *argv[])
             return 0;
         }
         // handle_client(fp, server_fd, buffer[0], new_socket);
-        else if (buffer[0] == '1')
+        else if (buffer[0] == LIST_FILES)
         {
-            printf("Read from client!\n");
+            printf("Reading from client!\n");
             list_file(server_fd, new_socket);
         }
-        else if (buffer[0] == '2')
+        else if (buffer[0] == DOWNLOAD)
         {
+            char file_name[SIZE];
+            read(new_socket, file_name, SIZE);
+            fp = fopen(file_name, "r");
+            if (fp == NULL)
+            {
+                perror("Error in reading file.\n");
+                exit(EXIT_FAILURE);
+            }
             send_file(fp, new_socket);
             break;
         }
@@ -186,6 +183,5 @@ int main(int argc, char const *argv[])
     // closing the listening socket
     shutdown(server_fd, SHUT_RDWR);
     free(fp);
-    free(filename);
     return 0;
 }
