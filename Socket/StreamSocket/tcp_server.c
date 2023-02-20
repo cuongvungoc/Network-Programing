@@ -12,6 +12,7 @@
 
 #define PORT 8080
 #define SIZE 1024
+#define MAX_THREAD 5
 #define LIST_FILES '1'
 #define DOWNLOAD '2'
 #define QUIT 'q'
@@ -38,7 +39,7 @@ void send_file(FILE *fp, int sockfd)
     printf("File data sent successfully.\n");
 }
 
-void list_file(int sockfd, int new_socket)
+void list_file(int new_socket)
 {
     struct dirent *dir;
     DIR *d;
@@ -59,24 +60,35 @@ void list_file(int sockfd, int new_socket)
     free(d);
 }
 
-void handle_client(FILE *fp, int server_fd, char request, int new_socket)
+void *handle_client(void *param)
 {
-    if (LIST_FILES == request)
+    char buffer[SIZE] = {0};
+    int new_socket = (int *)param;
+    read(new_socket, buffer, SIZE);
+    if (buffer[0] == QUIT)
     {
-        printf("Listing\n");
-        list_file(server_fd, new_socket);
+        printf("Disconnected from client\n");
+        pthread_exit(NULL);
     }
-    else if (DOWNLOAD == request)
+    else if (buffer[0] == LIST_FILES)
     {
-        printf("DOWNLOADING\n");
-        char *filename = "send.txt";
-        fp = fopen(filename, "r");
+        printf("Reading from client!\n");
+        list_file(new_socket);
+    }
+    else if (buffer[0] == DOWNLOAD)
+    {
+        char file_name[SIZE];
+        read(new_socket, file_name, SIZE);
+        FILE *fp;
+        fp = fopen(file_name, "r");
         if (fp == NULL)
         {
-            perror("[-]Error in reading file.");
-            exit(1);
+            perror("Error in reading file.\n");
+            exit(EXIT_FAILURE);
         }
-        send_file(fp, server_fd);
+        send_file(fp, new_socket);
+        pthread_exit(NULL);
+        // break;
     }
 }
 
@@ -87,8 +99,6 @@ int main(int argc, char const *argv[])
     struct sockaddr_in address;
     int opt = 1;
     int addrlen = sizeof(address);
-
-    FILE *fp;
 
     // Creating socket file descriptor
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -131,49 +141,19 @@ int main(int argc, char const *argv[])
         exit(EXIT_FAILURE);
     }
 
-    new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen);
-    if (new_socket < 0)
-    {
-        perror("accept");
-        exit(EXIT_FAILURE);
-    }
-
-    struct sockaddr_in *pV4Addr = (struct sockaddr_in *)&address;
-    struct in_addr ipAddr = pV4Addr->sin_addr;
-    char str[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &ipAddr, str, INET_ADDRSTRLEN);
-    printf("Listening from client with IP: %s, PORT: %d\n", str, ntohs(pV4Addr->sin_port));
-
+    pthread_t threads[MAX_THREAD];
+    int n_thread = 0;
+    // pthread_t thread_id;
     while (1)
     {
-        char buffer[SIZE] = {0};
-        read(new_socket, buffer, SIZE);
-        if (buffer[0] == QUIT)
+        new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen);
+        if (new_socket < 0)
         {
-            close(server_fd);
-            close(new_socket);
-            shutdown(server_fd, SHUT_RDWR);
-            return 0;
+            perror("accept");
+            exit(EXIT_FAILURE);
         }
-        // handle_client(fp, server_fd, buffer[0], new_socket);
-        else if (buffer[0] == LIST_FILES)
-        {
-            printf("Reading from client!\n");
-            list_file(server_fd, new_socket);
-        }
-        else if (buffer[0] == DOWNLOAD)
-        {
-            char file_name[SIZE];
-            read(new_socket, file_name, SIZE);
-            fp = fopen(file_name, "r");
-            if (fp == NULL)
-            {
-                perror("Error in reading file.\n");
-                exit(EXIT_FAILURE);
-            }
-            send_file(fp, new_socket);
-            break;
-        }
+        printf("Connection accepted from: %s, PORT: %d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+        pthread_create(&threads[n_thread++], NULL, handle_client, (int *)new_socket);
     }
 
     pthread_exit(NULL);
@@ -182,6 +162,5 @@ int main(int argc, char const *argv[])
     close(new_socket);
     // closing the listening socket
     shutdown(server_fd, SHUT_RDWR);
-    free(fp);
     return 0;
 }

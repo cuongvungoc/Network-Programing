@@ -20,7 +20,7 @@ pthread_t readerthreads[100];
 int readercount = 0;
 
 // Reader Function
-void* reader(void* param)
+void *reader(void *param)
 {
 	// Lock the semaphore
 	sem_wait(&x);
@@ -33,7 +33,7 @@ void* reader(void* param)
 	sem_post(&x);
 
 	printf("\n%d reader is inside",
-		readercount);
+		   readercount);
 
 	sleep(5);
 
@@ -41,7 +41,8 @@ void* reader(void* param)
 	sem_wait(&x);
 	readercount--;
 
-	if (readercount == 0) {
+	if (readercount == 0)
+	{
 		sem_post(&y);
 	}
 
@@ -49,12 +50,12 @@ void* reader(void* param)
 	sem_post(&x);
 
 	printf("\n%d Reader is leaving",
-		readercount + 1);
+		   readercount + 1);
 	pthread_exit(NULL);
 }
 
 // Writer Function
-void* writer(void* param)
+void *writer(void *param)
 {
 	printf("\nWriter is trying to enter");
 
@@ -90,8 +91,8 @@ int main()
 	// Bind the socket to the
 	// address and port number.
 	bind(serverSocket,
-		(struct sockaddr*)&serverAddr,
-		sizeof(serverAddr));
+		 (struct sockaddr *)&serverAddr,
+		 sizeof(serverAddr));
 
 	// Listen on the socket,
 	// with 40 max connection
@@ -106,50 +107,53 @@ int main()
 
 	int i = 0;
 
-	while (1) {
+	while (1)
+	{
 		addr_size = sizeof(serverStorage);
 
 		// Extract the first
 		// connection in the queue
 		newSocket = accept(serverSocket,
-						(struct sockaddr*)&serverStorage,
-						&addr_size);
+						   (struct sockaddr *)&serverStorage,
+						   &addr_size);
 		int choice = 0;
 		recv(newSocket,
-			&choice, sizeof(choice), 0);
+			 &choice, sizeof(choice), 0);
 
-		if (choice == 1) {
+		if (choice == 1)
+		{
 			// Creater readers thread
 			if (pthread_create(&readerthreads[i++], NULL,
-							reader, &newSocket)
-				!= 0)
+							   reader, &newSocket) != 0)
 
 				// Error in creating thread
 				printf("Failed to create thread\n");
 		}
-		else if (choice == 2) {
+		else if (choice == 2)
+		{
 			// Create writers thread
 			if (pthread_create(&writerthreads[i++], NULL,
-							writer, &newSocket)
-				!= 0)
+							   writer, &newSocket) != 0)
 
 				// Error in creating thread
 				printf("Failed to create thread\n");
 		}
 
-		if (i >= 50) {
+		if (i >= 50)
+		{
 			// Update i
 			i = 0;
 
-			while (i < 50) {
+			while (i < 50)
+			{
 				// Suspend execution of
 				// the calling thread
 				// until the target
 				// thread terminates
 				pthread_join(writerthreads[i++],
-							NULL);
+							 NULL);
 				pthread_join(readerthreads[i++],
-							NULL);
+							 NULL);
 			}
 
 			// Update i
